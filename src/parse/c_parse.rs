@@ -10,9 +10,9 @@ impl Cfile {
 
         //regex functions out
 
-        let class_string = c_file.find_class_substring(filetext);
-        if (class_string.len() > 0) {
-            c_file.get_class();
+        let class_strings: Vec<String> = c_file.find_class_substring(filetext);
+        if (class_strings.len() > 0) {
+            c_file.find_class(class_strings);
         }
 
         c_file.regex_functions(filetext);
@@ -20,7 +20,12 @@ impl Cfile {
         Ok(c_file)
     }
 
-    pub fn find_class(&mut self, classes: Vec<String>) -> Result<Self> {}
+    fn find_class(&mut self, classes: Vec<String>) -> Result<Self> {
+        for class in classes {
+            self.regex_class_functions(&class);
+        }
+        todo!();
+    }
 
     pub fn strip_comments(input: &str) -> String {
         let mut output = String::new();
@@ -77,10 +82,47 @@ impl Cfile {
     fn regex_functions(&mut self, file_string: &str) -> Result<&Self> {
         let re = Regex::new(r"([^\n\r\=]*)(\s+\w+\n*\r*)(\([^{};]*\))(\s*\w+)*").unwrap();
 
-        // Iterate over each match and add the function name to the result vector
-        //let mut result = Vec::new();
-        println!("{}", file_string);
         for cap in re.captures_iter(&file_string) {
+            let return_var = cap.get(1).unwrap().as_str().to_string();
+            let function_name = cap.get(2).unwrap().as_str().to_string();
+            let function_args = cap.get(3).unwrap().as_str().to_string();
+            println!("{:?}", return_var);
+            println!("{:?}", function_name);
+            println!("{:?}", function_args);
+        }
+        Ok(self)
+    }
+
+    fn regex_class_functions(&mut self, file_string: &str) -> Result<&Self> {
+        let re = Regex::new(r"([^\n\r\=]*)(\s+\w+\n*\r*)(\([^{};]*\))(\s*\w+)*").unwrap();
+
+        //split string between public: private:
+        let prv_str_start = file_string.find("private:").unwrap_or(0);
+        let pub_str_start = file_string.find("public:").unwrap_or(0);
+
+        let mut pub_str_end = file_string.len() - 1;
+        let mut prv_str_end = file_string.len() - 1;
+
+        if pub_str_start == 0 {
+            pub_str_end = 0;
+        } else if pub_str_start < prv_str_start && prv_str_start != 0 {
+            pub_str_end = prv_str_start - 1;
+        }
+
+        let pub_string = &file_string[pub_str_start..pub_str_end];
+        let private_string = &file_string[prv_str_start..prv_str_end];
+
+        println!("{}", pub_string);
+        for cap in re.captures_iter(pub_string) {
+            let return_var = cap.get(1).unwrap().as_str().to_string();
+            let function_name = cap.get(2).unwrap().as_str().to_string();
+            let function_args = cap.get(3).unwrap().as_str().to_string();
+            println!("{:?}", return_var);
+            println!("{:?}", function_name);
+            println!("{:?}", function_args);
+        }
+        println!("{}", private_string);
+        for cap in re.captures_iter(private_string) {
             let return_var = cap.get(1).unwrap().as_str().to_string();
             let function_name = cap.get(2).unwrap().as_str().to_string();
             let function_args = cap.get(3).unwrap().as_str().to_string();
@@ -100,10 +142,28 @@ impl Cfile {
     }
 }
 
-impl Cclass {}
+impl Cclass {
+    pub fn new(text: &str) -> Result<Cclass> {
+        let mut class = Cclass::default();
 
-impl Cfunction {}
+        Ok(class)
+    }
+}
 
-impl Carg {}
+impl Cfunction {
+    pub fn new(text: &str) -> Result<Cclass> {
+        let mut class = Cclass::default();
+
+        Ok(class)
+    }
+}
+
+impl Carg {
+    pub fn new(text: &str) -> Result<Cclass> {
+        let mut class = Cclass::default();
+
+        Ok(class)
+    }
+}
 
 //(:\n\r)*(\w+\s+)*(\w+\n*)\(([^.{}:;]*)\)(\s*\w+)*   function regex

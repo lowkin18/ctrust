@@ -10,8 +10,8 @@ pub struct Cfile {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Default)]
 pub struct Cclass {
     name: String,
-    pubmethod: Vec<Cfunction>,
-    privmethod: Vec<Cfunction>,
+    pubmethod: Option<Vec<Cfunction>>,
+    privmethod: Option<Vec<Cfunction>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Default)]
