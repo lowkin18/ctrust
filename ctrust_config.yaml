@@ -1,0 +1,14 @@
+name: "project_name"
+project_root_path: "C:\\Users\\kipke\\Desktop\\coding\\Rust\\c_parse\\test_files"
+folders:
+    - test_files
+    - app
+    - lib
+test_folders:
+    - test_files
+    - app
+    - lib
+support_folders:
+    - test_files
+output_path: "ctrust/test"
+compiler_path: "C:\\msys64\\mingw32"

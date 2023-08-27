@@ -1,33 +1,34 @@
-use crate::parse::types::{Carg, Cclass, Cfile, Cfunction};
-use crate::parse::*;
+use crate::ctrust::types::{Carg, Cclass, Cfile, Cfunc, Cret, Modifier};
+use crate::ctrust::*;
 use crate::prelude::*;
-
 use regex::Regex;
 
+use async_recursion::async_recursion;
+
 impl Cfile {
-    pub fn new(filetext: &str) -> Result<Cfile> {
+    pub async fn new(filetext: &str) -> Result<Cfile> {
         let mut c_file = Cfile::default();
 
         //regex functions out
 
-        let class_strings: Vec<String> = c_file.find_class_substring(filetext);
+        let class_strings: Vec<String> = c_file.find_class_substring(filetext).await;
         if (class_strings.len() > 0) {
-            c_file.find_class(class_strings);
+            c_file.find_class(class_strings).await;
         }
 
-        c_file.regex_functions(filetext);
+        c_file.regex_functions(filetext).await;
 
         Ok(c_file)
     }
 
-    fn find_class(&mut self, classes: Vec<String>) -> Result<Self> {
+    async fn find_class(&mut self, classes: Vec<String>) -> Result<&mut Self> {
         for class in classes {
             self.regex_class_functions(&class);
         }
-        todo!();
+        Ok(self)
     }
 
-    pub fn strip_comments(input: &str) -> String {
+    pub async fn strip_comments(input: &str) -> String {
         let mut output = String::new();
         let mut in_line_comment = false;
         let mut in_block_comment = false;
@@ -65,7 +66,7 @@ impl Cfile {
         output
     }
 
-    fn find_class_substring(&self, file_string: &str) -> Vec<String> {
+    async fn find_class_substring(&self, file_string: &str) -> Vec<String> {
         let mut offset = 0;
         let mut class_string = String::new();
         let mut bracket_count = 0;
@@ -79,21 +80,23 @@ impl Cfile {
         class_strings
     }
 
-    fn regex_functions(&mut self, file_string: &str) -> Result<&Self> {
+    async fn regex_functions(&mut self, file_string: &str) -> Result<&Self> {
         let re = Regex::new(r"([^\n\r\=]*)(\s+\w+\n*\r*)(\([^{};]*\))(\s*\w+)*").unwrap();
 
         for cap in re.captures_iter(&file_string) {
             let return_var = cap.get(1).unwrap().as_str().to_string();
             let function_name = cap.get(2).unwrap().as_str().to_string();
             let function_args = cap.get(3).unwrap().as_str().to_string();
-            println!("{:?}", return_var);
-            println!("{:?}", function_name);
-            println!("{:?}", function_args);
+
+            let function = Cfunc::new(&return_var, &function_name, &function_args);
+            //parse function params into class
+            // let function = Cfunction::new(function_name).add_args(Carg::new(function_args)).add_ret
+            // let args = Carg::new(function_args);
         }
         Ok(self)
     }
 
-    fn regex_class_functions(&mut self, file_string: &str) -> Result<&Self> {
+    async fn regex_class_functions(&mut self, file_string: &str) -> Result<&Self> {
         let re = Regex::new(r"([^\n\r\=]*)(\s+\w+\n*\r*)(\([^{};]*\))(\s*\w+)*").unwrap();
 
         //split string between public: private:
@@ -133,11 +136,11 @@ impl Cfile {
         Ok(self)
     }
 
-    pub fn get_class(&self) -> Result<Cclass> {
+    pub async fn get_class(&self) -> Result<Cclass> {
         todo!()
     }
 
-    pub fn get_functions(&self) -> Result<Vec<Cfunction>> {
+    pub async fn get_functions(&self) -> Result<Vec<Cfunc>> {
         todo!()
     }
 }
@@ -150,20 +153,20 @@ impl Cclass {
     }
 }
 
-impl Cfunction {
-    pub fn new(text: &str) -> Result<Cclass> {
+impl Cfunc {
+    pub async fn new(return_var: &str, name: &str, args: &str) -> Result<Cclass> {
+        let args = Carg::new_vec(args).await?;
         let mut class = Cclass::default();
-
         Ok(class)
     }
 }
 
-impl Carg {
-    pub fn new(text: &str) -> Result<Cclass> {
-        let mut class = Cclass::default();
+#[cfg(test)]
+mod tests_cparse {
+    use super::*;
 
-        Ok(class)
+    #[tokio::test]
+    async fn test_cfunction() {
+        assert!(true);
     }
 }
-
-//(:\n\r)*(\w+\s+)*(\w+\n*)\(([^.{}:;]*)\)(\s*\w+)*   function regex
