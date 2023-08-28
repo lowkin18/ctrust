@@ -46,8 +46,19 @@ pub enum Modifier {
     Reference,
     ConstType,
     ConstPtr,
-    ConstRef,
-    ConstReturn,
-    ConstexprReturn,
     StaticFunc,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+pub enum ReturnModifier {
+    Pointer,
+    Reference,
+    Const,
+    Constexpr,
+    StaticFunc,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+pub enum FuncModifier {
+    Static,
 }

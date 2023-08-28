@@ -44,7 +44,8 @@ impl Carg {
         }
         //if just regular argument parse it
         else {
-            arg = Carg::parse_argument(text_arg).await?;
+            arg.base_string = text_arg.to_owned();
+            arg.parse_argument().await?;
         }
 
         //populate the modifiers
@@ -54,33 +55,108 @@ impl Carg {
         Ok(Some(arg))
     }
 
+    pub async fn parse_const(&mut self) -> Result<String> {
+        let mut modifier_list: Vec<Modifier> = Vec::new();
+
+        let mut str_adjust: String = self.base_string.clone();
+        let re = Regex::new(r"\*\s*const").unwrap();
+        let mut result: Vec<_> = re
+            .captures_iter(&self.base_string)
+            .map(|cap| cap[0].to_string())
+            .collect();
+
+        match result.len() {
+            0 => (),
+            1 => {
+                modifier_list.push(Modifier::ConstPtr);
+                modifier_list.push(Modifier::Pointer);
+                str_adjust = str_adjust.replace(result.pop().unwrap().as_str(), "");
+            }
+            _ => {
+                return Err(Error::Generic(
+                    "malformed argument, multiple const pointers".to_owned(),
+                ))
+            }
+        }
+        if str_adjust.contains("const") {
+            str_adjust = str_adjust.replace("const", "").to_owned();
+            modifier_list.push(Modifier::ConstType);
+        }
+
+        //find out how many pointers there are or reference
+        if (str_adjust.contains("*")) {
+            let mut count = str_adjust.matches('*').count();
+            str_adjust = str_adjust.replace("*", "");
+            while (count > 0) {
+                count -= 1;
+                modifier_list.push(Modifier::Pointer);
+            }
+        }
+        //find out how many pointers there are or reference
+        if (str_adjust.contains("&")) {
+            str_adjust = str_adjust.replace("&", "");
+            modifier_list.push(Modifier::Reference);
+        }
+        if (modifier_list.len() > 0) {
+            self.var_modifier = Some(modifier_list);
+        }
+        Ok(str_adjust)
+    }
+
     ///this function will parse an argument text and return the Carg object of the argument
-    pub async fn parse_argument(text: &str) -> Result<Carg> {
-        let mut arg = Carg::default();
+    pub async fn parse_argument(&mut self) -> Result<()> {
+        let mut argument_string = self.parse_const().await?;
+        //check for defaults
+        if let Some((args_only, defaults)) = argument_string.split_once('=') {
+            self.var_default = Some(defaults.to_owned());
+            argument_string = args_only.to_owned();
+        }
 
         let mut modifier_list: Vec<Modifier> = Vec::new();
-        let input_output: Vec<&str> = text.split(' ').collect();
-        let mut input_output: Vec<&str> =
-            input_output.into_iter().filter(|s| !s.is_empty()).collect();
+        let mut parameter_list: Vec<&str> = argument_string.split(' ').collect();
+        let mut parameter_list: Vec<&str> = parameter_list
+            .into_iter()
+            .filter(|s| !s.is_empty())
+            .collect();
 
-        for (index, string_arg) in input_output.iter().enumerate() {
-            //check for modifiers at the start
-            let arg_str = *string_arg;
-            if (arg_str == "const") {
-                modifier_list.push(Modifier::ConstType)
+        for (index, string_arg) in parameter_list.iter().enumerate() {
+            let mut arg_str = (**string_arg).to_owned();
+            if (self.var_type == "") {
+                self.var_type = arg_str;
+            } else if self.name.is_none() {
+                self.name = Some(arg_str.to_owned());
+            } else {
+                return Err(Error::Generic(
+                    ("to many parameters could not parse".to_owned()),
+                ));
             }
         }
 
-        if (arg.var_type == "") {
+        if (self.var_type == "") {
             return Err(Error::Generic("parsing failed".to_owned()));
         }
+        Ok(())
+    }
 
-        //if modifiers add them to the Carg
-        if (modifier_list.len() > 0) {
-            arg.var_modifier = Some(modifier_list);
+    ///this function checks the text variable
+    pub async fn check_modifier(
+        text: String,
+        modifier_list: &mut Vec<Modifier>,
+    ) -> Result<(String, &mut Vec<Modifier>)> {
+        let mut arg_string = text.clone();
+        if (arg_string.contains("*")) {
+            let mut count = arg_string.matches('*').count();
+            arg_string = arg_string.replace("*", "");
+            while (count > 0) {
+                count -= 1;
+                modifier_list.push(Modifier::Pointer);
+            }
         }
-
-        Ok(arg)
+        if (arg_string.contains("&")) {
+            arg_string = arg_string.replace("&", "");
+            modifier_list.push(Modifier::Reference);
+        }
+        Ok((text, modifier_list))
     }
 
     pub async fn check_if_func_ref(text_arg: &str) -> bool {
@@ -154,23 +230,73 @@ mod test_carg_parse {
     use super::*;
     #[tokio::test]
     async fn test_passing_argument() {
-        let arg = Carg::parse_argument("const float const *int value")
-            .await
-            .unwrap();
-
-        assert_eq!(arg.name.unwrap(), "value");
+        let mut arg = Carg::default();
+        arg.base_string = "const float * const value".to_owned();
+        arg.parse_argument().await.unwrap();
+        dbg!("{:?}", &arg);
+        let type_name = arg.name.as_ref().unwrap().as_str();
+        assert_eq!(type_name, "value");
         assert_eq!(arg.var_type, "float");
         assert!(arg.var_modifier.is_some());
-        assert!(arg.var_modifier.unwrap().contains(&Modifier::ConstType));
-        assert!(arg.var_modifier.unwrap().contains(&Modifier::ConstPtr));
-        assert!(arg.var_modifier.unwrap().contains(&Modifier::Pointer));
 
-        let arg_two = Carg::parse_argument("float &int value").await;
+        let modifier = arg.var_modifier.as_ref().unwrap();
+        assert!(modifier.contains(&Modifier::ConstType));
+        assert!(modifier.contains(&Modifier::ConstPtr));
+        assert!(modifier.contains(&Modifier::Pointer));
+        assert!(modifier.len() == 3);
 
+        let mut arg = Carg::default();
+        arg.base_string = "int * const value_two".to_owned();
+        arg.parse_argument().await.unwrap();
+
+        let type_name = arg.name.as_ref().unwrap().as_str();
+        assert_eq!(type_name, "value_two");
+        assert_eq!(arg.var_type, "int");
+        assert!(arg.var_modifier.is_some());
+
+        let modifier = arg.var_modifier.as_ref().unwrap();
+        assert!(modifier.contains(&Modifier::ConstPtr));
+        assert!(modifier.contains(&Modifier::Pointer));
+        assert!(modifier.len() == 2);
         //check malformed argument
 
-        let failure = Carg::parse_argument("float& int value").await;
-        assert!(result.is_err());
+        let mut arg = Carg::default();
+        arg.base_string = "const int &value_two".to_owned();
+        arg.parse_argument().await.unwrap();
+
+        let type_name = arg.name.as_ref().unwrap().as_str();
+        assert_eq!(type_name, "value_two");
+        assert_eq!(arg.var_type, "int");
+        assert!(arg.var_modifier.is_some());
+
+        let modifier = arg.var_modifier.as_ref().unwrap();
+        assert!(modifier.contains(&Modifier::ConstType));
+        assert!(modifier.contains(&Modifier::Reference));
+        assert!(modifier.len() == 2);
+        //check malformed argument
+
+        let mut arg = Carg::default();
+        arg.base_string = "int const value_default = 2".to_owned();
+        arg.parse_argument().await.unwrap();
+
+        let type_name = arg.name.as_ref().unwrap().as_str();
+        assert_eq!(type_name, "value_default");
+        assert_eq!(arg.var_type, "int");
+        assert!(arg.var_modifier.is_some());
+
+        let modifier = arg.var_modifier.as_ref().unwrap();
+        assert!(modifier.contains(&Modifier::ConstType));
+        assert!(modifier.len() == 1);
+        assert!(arg.var_default.is_some());
+        assert!(arg.var_default.unwrap() == " 2");
+
+        let mut arg = Carg::default();
+        arg.base_string = "const * float const int value".to_owned();
+        let failure = arg.parse_argument().await;
+        match failure {
+            Err(error) => println!("Error: {}", error),
+            _ => println!("Error returned no error"),
+        }
         assert!(true);
     }
     ///test to check if function argument is itself a functio
