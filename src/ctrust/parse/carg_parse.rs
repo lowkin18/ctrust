@@ -38,19 +38,12 @@ impl Carg {
 
         let mut arg = Carg::default();
 
-        //check if special type
-        if Carg::is_func(text_arg).await {
-            todo!();
-        }
-        //if just regular argument parse it
-        else {
+        //check if argument is not a function
+        if !arg.is_func().await? {
+            //if just regular argument parse it
             arg.base_string = text_arg.to_owned();
             arg.parse_argument().await?;
         }
-
-        //populate the modifiers
-        //arg.var_modifier = Carg::find_modifiers(text_arg).await?;
-        //we assume this is a function pointer/ref
 
         Ok(Some(arg))
     }
@@ -233,7 +226,6 @@ mod test_carg_parse {
         let mut arg = Carg::default();
         arg.base_string = "const float * const value".to_owned();
         arg.parse_argument().await.unwrap();
-        dbg!("{:?}", &arg);
         let type_name = arg.name.as_ref().unwrap().as_str();
         assert_eq!(type_name, "value");
         assert_eq!(arg.var_type, "float");
@@ -273,6 +265,15 @@ mod test_carg_parse {
         assert!(modifier.contains(&Modifier::ConstType));
         assert!(modifier.contains(&Modifier::Reference));
         assert!(modifier.len() == 2);
+
+        let mut arg = Carg::default();
+        arg.base_string = "customType test_value".to_owned();
+        arg.parse_argument().await.unwrap();
+
+        let type_name = arg.name.as_ref().unwrap().as_str();
+        assert_eq!(type_name, "test_value");
+        assert_eq!(arg.var_type, "customType");
+        assert!(arg.var_modifier.is_none());
         //check malformed argument
 
         let mut arg = Carg::default();

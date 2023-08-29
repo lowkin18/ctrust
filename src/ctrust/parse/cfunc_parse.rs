@@ -9,27 +9,31 @@ use async_recursion::async_recursion;
 /// carg dealing with filtering function arguments
 impl Carg {
     /// this function checks to see if the text string is a function referece/ptr
-    pub async fn is_func(text_arg: &str) -> bool {
-        if text_arg.contains("(") {
-            return true;
+    pub async fn is_func(&mut self) -> Result<bool> {
+        if self.base_string.contains("(") {
+            //parse function
+            self.parse_func_ptr();
+
+            return Ok(true);
         }
-        if text_arg.contains("function<") {
-            return true;
+        if self.base_string.contains("function<") {
+            //parse function
+
+            return Ok(true);
         }
-        false
+        Ok(false)
     }
 
-    pub async fn parse_func_argument(text_arg: &str) -> Result<Option<Box<Cfunc>>> {
+    pub async fn parse_func_ptr(&mut self) -> Result<()> {
         let mut func_arg = Cfunc::default();
 
-        if (text_arg.contains("function<")) {}
-
-        Ok(None)
+        Ok(())
     }
     ///this func will parse any std::function input arguments used
-    pub async fn parse_stdfunc_argument(text_arg: &str) -> Result<Option<Box<Cfunc>>> {
-        let mut func = Cfunc::default();
-        let input_output: Vec<&str> = text_arg
+    pub async fn parse_stdfunc_argument(&mut self) -> Result<()> {
+        let mut func_arg = Cfunc::default();
+        let input_output: Vec<&str> = self
+            .base_string
             .split(|c| c == '<' || c == '(' || c == ',' || c == '>' || c == ')')
             .collect();
         let mut input_output: Vec<&str> =
@@ -41,7 +45,7 @@ impl Carg {
 
         println!("{:?}", input_types);
 
-        func.ret = Cret::new(output_type).await;
+        func_arg.ret = Cret::new(output_type).await;
         let mut vec_carg: Vec<Carg> = Vec::new();
         for input_arg in input_types {
             if let Some(x) = Carg::new_arg(input_arg).await? {
@@ -51,10 +55,10 @@ impl Carg {
 
         /// if the vector has some arguments populate array
         if (vec_carg.len() > 0) {
-            func.args = Some(vec_carg);
+            func_arg.args = Some(vec_carg);
         }
 
-        Ok(Some(Box::new(func)))
+        Ok(())
     }
 }
 
