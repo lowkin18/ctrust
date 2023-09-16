@@ -69,21 +69,27 @@ mod test_carg_parse {
     #[tokio::test]
     async fn test_is_function() {
         //test not a function
-        assert!(!Carg::is_func("int16_t arg").await);
+        let mut test_one = Carg::new_arg("int16_t arg").await.unwrap().unwrap();
+        assert!(!test_one.is_func().await.unwrap());
 
-        assert!(Carg::is_func("void(*func)(int,int)").await);
-        assert!(Carg::is_func("std::function<int,<int,int>").await);
+
+        let mut test_two = Carg::new_arg("void(*func)(int,int)").await.unwrap().unwrap();
+        assert!(test_two.is_func().await.unwrap());
+
+        
+        let mut test_two = Carg::new_arg("std::function<int,<int,int>").await.unwrap().unwrap();
+        assert!(test_two.is_func().await.unwrap());
     }
     #[tokio::test]
     async fn test_parse_stdfunction() {
-        //test not a function
-        let value = Carg::parse_stdfunc_argument("std::function<int,<int,int> func").await;
-        // println!("{:?}", value);
-        let value = Carg::parse_stdfunc_argument(
-            "std::function<int<std::function<int<int,int>>,int>> func",
-        )
-        .await;
-        // println!("{:?}", value);
+        ///test not a function
+        let mut test_one = Carg::new_arg("std::function<int,<int,int> func").await.unwrap().unwrap();
+        test_one.parse_stdfunc_argument().await;
+        println!("{:?}", test_one);
+         
+        let mut test_two = Carg::new_arg("std::function<int<std::function<int<int,int>>,int>> func").await.unwrap().unwrap(); 
+        test_two.parse_stdfunc_argument().await;
+        println!("{:?}", test_two);
     }
 
     #[tokio::test]
