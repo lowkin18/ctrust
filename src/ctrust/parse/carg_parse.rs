@@ -10,8 +10,17 @@ use async_recursion::async_recursion;
 ///implementation of Carg for parsing out Cargs
 impl Carg {
     ///this function will take a vec of argument strings and parse them
-    pub async fn new_from_vec(text_args: Vec<&str>) -> Result<Option<Vec<Carg>>> {
-        Ok(None)
+    pub async fn new_from_vec(text_args: Vec<&str>) -> Result<Option<Vec<Carg>>> { 
+        
+        let mut cargs: Vec<Carg> = Vec::new();
+        for part in text_args.iter() {
+            let arg = Carg::new_arg(part.trim()).await?;
+            if arg.is_some() {
+                cargs.push(arg.unwrap());
+            }
+        }
+        
+        Ok(Some(cargs))
     }
 
     ///this function will take a text string of the arguments and return vector of Cargs
@@ -39,7 +48,7 @@ impl Carg {
         let mut arg = Carg::default();
 
         //check if argument is not a function
-        if !arg.is_func().await? {
+        if !arg.is_func()? {
             //if just regular argument parse it
             arg.base_string = text_arg.to_owned();
             arg.parse_argument().await?;

@@ -17,6 +17,7 @@ pub struct Cclass {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Default)]
 
 pub struct Cfunc {
+    pub base_string: String,
     pub name: String,
     pub args: Option<Vec<Carg>>,
     pub ret: Option<Cret>,
@@ -35,6 +36,7 @@ pub struct Carg {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Default)]
 pub struct Cret {
+    pub base_string:String,
     pub var_type: String,
     pub var_modifier: Option<Vec<Modifier>>,
     pub var_func: Option<Box<Cfunc>>,

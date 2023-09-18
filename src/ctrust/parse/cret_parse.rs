@@ -8,7 +8,23 @@ use async_recursion::async_recursion;
 /// carg dealing with filtering function arguments
 impl Cret {
     pub async fn new(text_arg: &str) -> Option<Cret> {
-        (None)
+        
+
+
+        
+    }
+
+    pub fn is_func(&self) -> Result<bool>{
+        if self.base_string.contains("(") {
+            //parse function
+            return Ok(true);
+        }
+        if self.base_string.contains("function<") {
+            //parse function
+            
+            return Ok(true);
+        }
+        Ok(false)
     }
 }
 

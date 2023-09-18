@@ -137,6 +137,7 @@ impl Cfile {
     }
 
     pub async fn get_class(&self) -> Result<Cclass> {
+        
         todo!()
     }
 
@@ -149,17 +150,13 @@ impl Cclass {
     pub fn new(text: &str) -> Result<Cclass> {
         let mut class = Cclass::default();
 
+
+
         Ok(class)
     }
 }
 
-impl Cfunc {
-    pub async fn new(return_var: &str, name: &str, args: &str) -> Result<Cclass> {
-        let args = Carg::new_vec(args).await?;
-        let mut class = Cclass::default();
-        Ok(class)
-    }
-}
+
 
 #[cfg(test)]
 mod tests_cparse {
