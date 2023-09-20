@@ -20,11 +20,13 @@ impl Cfunc {
     pub async fn new_ptr_func(text:&str) -> Result<Box<Cfunc>>{               
         let mut func_arg = Cfunc::default();
         func_arg.base_string = text.to_owned();
-        let mut input_output: Vec<&str> = text
-            .split(|c| c == '(' || c == ',' )
+        // let mut input_output: Vec<&str> = text
+        //     .split(|c| c == '(' || c == ',' )
+        //     .collect();
+        let re = Regex::new(r"\((.*?)\)").unwrap();
+        let mut input_output:Vec<&str> = re.find_iter(text)
+            .map(|mat| mat.as_str())
             .collect();
-         
-        println!("{:?}", &input_output); 
         
         let output_type = input_output.remove(0);
 
@@ -39,8 +41,8 @@ impl Cfunc {
             println!("{:?}", vec_of_str);
             func_arg.args = Carg::new_from_vec(vec_of_str).await?;
         } 
-        //TODO: cret func_arg.ret = Cret() 
-        
+        //get the return var
+        func_arg.ret = Cret::new(&func_arg.base_string).await?;  
         Ok(Box::new(func_arg))
     }
     
@@ -59,7 +61,7 @@ impl Cfunc {
 
         println!("{:?}", &input_types);
 
-        func_arg.ret = Cret::new(output_type).await;
+        func_arg.ret = Cret::new(output_type).await?;
         let mut vec_carg: Vec<Carg> = Vec::new();
         for input_arg in input_types {
             if let Some(x) = Carg::new_arg(input_arg).await? { vec_carg.push(x);
@@ -131,7 +133,7 @@ impl Carg {
 
         println!("{:?}", &input_types);
 
-        func_arg.ret = Cret::new(output_type).await;
+        func_arg.ret = Cret::new(output_type).await?;
         let mut vec_carg: Vec<Carg> = Vec::new();
         for input_arg in input_types {
             if let Some(x) = Carg::new_arg(input_arg).await? { vec_carg.push(x);
@@ -184,6 +186,12 @@ mod test_carg_parse {
     #[tokio::test]
     async fn test_parse_function_ptr() {
         let teststr = "void (*funcptr)(int test, int test)".to_string();
+        let mut cfuncptr= Cfunc::new_ptr_func(&teststr).await.unwrap();
+        println!("{:?}", &*cfuncptr);
+    }
+    #[tokio::test]
+    async fn test_parse_function_ptr_notype() {
+        let teststr = "void (*funcptr(int x,int y))(int a, int b)".to_string();
         let mut cfuncptr= Cfunc::new_ptr_func(&teststr).await.unwrap();
         println!("{:?}", &*cfuncptr);
     }
